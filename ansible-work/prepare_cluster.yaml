@@ -1,0 +1,24 @@
+---
+- name: Prepare hosts foles for all Instances
+  hosts: nginx-servers
+  gather_facts: yes
+#  become: yes
+  roles:
+    - common/01-first_install
+
+
+- name: Prepare nginx first servers
+  hosts: nginx-servers
+  gather_facts: no
+#  become: yes
+  roles:
+    - common/02-install_proxy_nginx
+
+#- name: Prepare nginx web-main servers
+#  hosts: web-servers
+#  gather_facts: yes
+#  become: yes
+#  roles:
+#    - common/03-install_main_nginx
+
+...

@@ -1,0 +1,134 @@
+# For more information on configuration, see:
+#   * Official English Documentation: http://nginx.org/en/docs/
+#   * Official Russian Documentation: http://nginx.org/ru/docs/
+
+user nginx;
+worker_processes auto;
+# Запрещает перекидывать задачи планировщику ОС - 
+worker_cpu_affinity auto;
+
+error_log /var/log/nginx/error.log;
+pid /var/run/nginx.pid;
+
+# Включение обработки регулярных выражений
+pcre_jit on;
+
+#Уровень максимальных коннектов произведение worker_processes на worker_connections
+worker_rlimit_nofile 3000;
+
+
+# Load dynamic modules. See /usr/share/nginx/README.dynamic.
+include /usr/share/nginx/modules/*.conf;
+
+events {
+    worker_connections 4196;
+}
+
+http {
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+    log_format cache '$remote_addr - $host [$time_local] "$request" $status '
+                     '$body_bytes_sent "$http_referer" '
+                     ' rt=$request_time ut=$upstream_response_time'
+                     ' cs=$upstream_cache_status';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile            on;
+    tcp_nopush          on;
+    tcp_nodelay         on;
+# Позволяет сбрасывать неиспользуемые соединения
+    reset_timedout_connection on;
+    keepalive_timeout   125;
+# Логическое ограничение в рамках одного соединения
+    keepalive_requests  1000;
+    types_hash_max_size 2048;
+
+# Отключаем ответ версии сервера
+    server_tokens       off;
+
+send_timeout	10;
+    client_body_timeout	10;
+    client_header_timeout	10;
+
+    # Таблица для имён сайтов
+    server_names_hash_max_size	4096;
+    server_names_hash_bucket_size 32;
+
+# Лимиты
+# Ограничение тела запроса клиентом
+    client_max_body_size        50m;
+    client_body_buffer_size     1024k;
+
+    client_body_temp_path       /var/nginx/client_body_temp;
+
+# Подключение к Apache
+    proxy_connect_timeout       25;
+    proxy_send_timeout          30;
+    proxy_read_timeout          40;
+
+    proxy_buffer_size           256k;
+    proxy_buffers               32 256k;
+    proxy_busy_buffers_size     256k;
+    proxy_temp_file_write_size  256k;
+    proxy_max_temp_file_size    1024m;
+
+    proxy_temp_path  /var/nginx/proxy_temp;
+
+    include             /etc/nginx/mime.types;
+    default_type        application/octet-stream;
+
+ # Конфигурация Gzip
+    gzip        on;
+    gzip_static on;
+    gzip_buffers 16 32k;
+    gzip_types text/plain text/css text/xml application/x-javascript application/msword application/rtf application/pdf application/vnd.ms-excel image/x-icon image/svg+xml application/x-font-ttf application/json application/xml application/xml+rss text/javascript application/javascript;
+    gzip_comp_level 6;
+    gzip_proxied any;
+    gzip_min_length 1000;
+    gzip_disable "msie6";
+    gzip_vary on;
+    # Отключение e-тэгов
+    etag off;
+
+# Конфигурация кеша
+    proxy_cache_valid 40m;
+    proxy_cache_key $scheme$proxy_host$request_uri; # $cookie_sid_i$cookie_ssid_m;
+#    proxy_cache_path /nginx/cache levels=1:2 keys_zone=one:100m inactive=3d max_size=200M;
+#    proxy_cache_path /nginx/ram levels=1:2 keys_zone=two:100m inactive=3d max_size=200M;
+
+
+# Разрешает использовать просроченный кеш
+    proxy_cache_revalidate on;
+    # Определяет в каких случаях можно использовать устаревший закешированый ответ
+    # Например: error | timeout | invalid_header | updating | http_500 | http_502 | http_503 | http_504 | http_403 | http_404 | off ...;
+    proxy_cache_use_stale error;
+    proxy_cache_use_stale timeout;
+    proxy_cache_use_stale http_500;
+    proxy_cache_use_stale http_502;
+    proxy_cache_use_stale http_503;
+    proxy_cache_use_stale http_504;
+
+    limit_conn_zone $binary_remote_addr zone=lone:10m;
+    limit_req_zone $binary_remote_addr zone=ltwo:10m rate=280r/s;
+
+
+    # Load modular configuration files from the /etc/nginx/conf.d directory.
+    # See http://nginx.org/en/docs/ngx_core_module.html#include
+    # for more information.
+
+    include /etc/nginx/conf.d/*.conf;
+    include /etc/nginx/sites-enabled/*.conf;
+
+
+    upstream backend_host {
+
+    hash $remote_addr$remote_port consistent;
+
+    server {{ remove_server }}:80;
+    keepalive 32;
+    }
+
+}
+

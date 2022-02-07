@@ -1,0 +1,89 @@
+[CONNECTIONS]
+connections[default][read][type]   = mysql
+connections[default][read][method] = host
+connections[default][read][name]   = bigbang
+connections[default][read][host]   = 127.0.0.1
+connections[default][read][port]   = 3306
+connections[default][read][user]   = {{ mysql_local_user }}
+connections[default][read][pass]   = {{ mysql_local_user_passwd }}
+
+connections[default][write][type]   = mysql
+connections[default][write][method] = host
+connections[default][write][name]   = bigbang
+connections[default][write][host]   = 127.0.0.1
+connections[default][write][port]   = 3306
+connections[default][write][user]   = {{ mysql_local_user }}
+connections[default][write][pass]   = {{ mysql_local_user_passwd}}
+
+connections[bb][read][type]   = postgresql
+connections[bb][read][method] = host
+connections[bb][read][name]   = bb
+connections[bb][read][host]   = 127.0.0.1
+connections[bb][read][port]   = 5432
+connections[bb][read][user]   = burj
+connections[bb][read][pass]   =
+
+connections[bb][write][type]   = postgresql
+connections[bb][write][method] = host
+connections[bb][write][name]   = bb
+connections[bb][write][host]   = 127.0.0.1
+connections[bb][write][port]   = 5432
+connections[bb][write][user]   = burj
+connections[bb][write][pass]   =
+
+[BB DB]
+db_bb_host = 10.10.10.10
+db_bb_port = 5432
+db_bb_user = postgres
+db_bb_pass = postgres
+db_bb_name = bb
+
+[BURJ DB]
+db_burj_host = example.dyndns.biz
+db_burj_port = 5432
+db_burj_user = postgres
+db_burj_pass = postgres
+db_burj_name = bb
+
+[CACHE]
+redis_host = 127.0.0.1
+redis_port = 6379
+
+[MAIL]
+mail_host     = mail.example.com
+mail_port     = 25
+mail_user     = fake_user@example.com
+mail_password = pass
+
+[PATHS]
+
+pricelist_dir              = price
+site_protocol              = http://
+templates_dir              = tpl/templates/
+languages_dir              = languages/
+styles_dir                 = css/
+pricelist_dir              = price
+pricelist_dir2             = /var/www/samurai/data/www/price/
+scripts_dir                = /var/www/samurai/data/scripts/
+pricelist_dir              = price
+board_dir                  = upload/board/
+price_ftp_dir              = /var/www/ftp-admin/data/ftp-users/
+price_ftp_tmp_dir          = /var/www/samurai/data/www/price/
+price_ftp_archive_dir      = /var/www/ftp-admin/data/ftp-users/archive/
+price_send_report_dir      = upload/pricesendreport/
+price_full_ftp_dir         = /var/www/ftp-admin/data/ftp-pricelists/
+price_full_ftp_tmp_dir     = /var/www/samurai/data/www/price/full/
+price_full_ftp_archive_dir = /var/www/ftp-admin/data/ftp-pricelists/archive/
+price_send_full_report_dir = upload/pricesendreport/full/
+root_images_dir            = /var/www/samurai/data/www/static.example.com
+gcc_cert_dir               = /var/www/utec/cert/
+
+[TEST_ENVIRONMENT]
+is_test        = {{ is_test }}
+test_host_name = example.com
+live_site      = INSERT_NAME/
+utf8_enabled   = false
+
+[OTHER]
+log_dir   = /var/log
+log_level = DEBUG

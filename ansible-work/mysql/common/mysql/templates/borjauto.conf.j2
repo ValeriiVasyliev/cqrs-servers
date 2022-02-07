@@ -1,0 +1,97 @@
+server {
+    listen       80;
+    server_name  _;
+    root         /var/www/borjauto/web;
+    index index.php index.html;
+
+    error_log   /var/log/nginx/error.log  warn;
+    access_log  /var/log/nginx/access.log main;
+
+    rewrite ^/app\.php/?(.*)$ /$1 permanent;
+    try_files $uri @rewriteapp;
+
+        location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
+        expires 7d;
+        }
+
+    location @rewriteapp {
+        rewrite ^(.*)$ /app.php/$1 last;
+    }
+
+    location /buy {
+        rewrite ^/buy/([^/]*)/?([^/]*)/?([^/]*)/?([^/]*)/?$ /search.php?article=$1&discount_id=$2&country=$3&currency=$4;
+    }
+
+    location /board { 
+        rewrite ^/board/*$ /board.php;
+        rewrite ^/board/page([0-9]+)/*$ /board.php?page=$1;
+        rewrite ^/board/user/([0-9]+)/*$ /board.php?action=viewuser&userId=$1;
+        rewrite ^/board/user/([0-9]+)/page([0-9]+)/*$ /board.php?action=viewuser&userId=$1&page=$2;
+        rewrite ^/board/([0-9]+)\-([^/]*)/([0-9]+)\-([^/]*).html$ /board.php?action=view&caturl=$2&id=$3&adsurl=$4&catid=$1; rewrite ^/board/([0-9]+)\-([^/]*)/page([0-9]+)/*$ /board.php?action=list&caturl=$2&page=$3&catid=$1; 
+        rewrite ^/board/([0-9]+)\-([^/]*)/*$ /board.php?action=list&caturl=$2&catid=$1;
+    }
+
+    location /robots {
+        rewrite ^/robots.txt+$ /index.php?action=robots;
+    }
+
+    location /en {
+        rewrite ^/en/*$ /index.php?language=en; 
+    } 
+
+    location /ru { 
+        rewrite ^/ru/*$ /index.php?language=ru;
+    }
+
+    location /reg_success {
+        rewrite ^/reg_success+$ /registration.php?action=reg_success;
+    }
+
+    location /order_success {
+        rewrite ^/order_success+$ /basket.php?action=order_success;
+    }
+
+    location /track {
+        rewrite ^/track/([^/]*)$ /track.php?number=$1;
+    }
+
+    location /thumb {
+        rewrite ^/thumb/([^/]*)$ /thumb.php?hash=$1;
+    }
+ 
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    location ~ \.php(/|$) {
+        fastcgi_pass unix:/run/php-fpm/php-fpm.sock;
+        fastcgi_split_path_info ^(.+\.php)(/.*)$;
+        fastcgi_index index.php;
+        send_timeout 1800;
+        fastcgi_read_timeout 18000;
+        fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param HTTP_X_FORWARDED_FOR $http_x_real_ip;
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 256 16k;
+        fastcgi_busy_buffers_size 256k;
+        fastcgi_temp_file_write_size 256k;
+        include fastcgi_params;
+    }
+
+ 
+    location = /info {
+        allow   127.0.0.1;
+        deny    all;
+        rewrite (.*) /.info.php;
+    }
+ 
+    error_page 403 /403.html;
+    error_page 404 /404.html;
+    error_page 500 502 503 504 /50x.html;    
+
+#    listen 443 ssl; # managed by Certbot
+#    ssl_certificate /etc/letsencrypt/live/dev.example.com/fullchain.pem; # managed by Certbot
+#    ssl_certificate_key /etc/letsencrypt/live/dev.example.com/privkey.pem; # managed by Certbot
+#    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+#    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot    
+}

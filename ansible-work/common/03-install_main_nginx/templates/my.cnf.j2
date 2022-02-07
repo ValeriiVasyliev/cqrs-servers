@@ -1,0 +1,184 @@
+[mysqld]
+datadir=/var/lib/mysql
+socket={{ mysql_socket }}
+# Disabling symbolic-links is recommended to prevent assorted security risks
+symbolic-links=0
+# Settings user and group are ignored when systemd is used.
+# If you need to run mysqld under a different user or group,
+# customize your systemd unit file for mariadb according to the
+# instructions in http://fedoraproject.org/wiki/Systemd
+
+[mysqld_safe]
+log-error=/var/log/mariadb/mariadb.log
+pid-file=/var/run/mariadb/mariadb.pid
+
+[mysqld]
+bind-address = 0.0.0.0
+local-infile=0
+#innodb=off
+max_connections = 600
+max_user_connections=100
+key_buffer_size = 256M
+myisam_sort_buffer_size = 128M
+read_buffer_size = 8M
+table_open_cache = 6000
+thread_cache_size = 100
+wait_timeout = 60
+connect_timeout = 10
+tmp_table_size = 1G
+max_heap_table_size = 1G
+max_allowed_packet = 1024M
+net_buffer_length = 2M
+max_connect_errors = 100
+concurrent_insert = 2
+read_rnd_buffer_size = 2M
+bulk_insert_buffer_size = 2G
+query_cache_limit = 16M
+query_cache_size = 256M
+query_cache_type = 1
+query_prealloc_size = 128M
+query_alloc_block_size = 128M
+transaction_alloc_block_size = 128M
+transaction_prealloc_size = 128M
+max_write_lock_count = 2
+lower_case_table_names=1
+pid-file=/var/log/mariadb/mariadb.pid
+
+#From old config
+sql_mode = "NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
+
+##########
+# Настройка репликаций
+##########
+#server-id = 11
+## Месторасположения бинарнных логов для реплики
+#log_bin = /var/log/mariadb/mysql-bin.log
+## Cколько дней хранить логи реплики
+#expire_logs_days = 2
+#Список баз для реплики. Если закомментировано, то реплицируется всё
+# binlog_do_db = PWeb_BD
+# Список таблиц подключен в файле /etc/my.cnf.d/replicate_u304043.cnf
+# Способ записи логов (в данных момент смешанный)
+#binlog_format = MIXED
+binlog_format = ROW
+
+slave_parallel_mode=optimistic
+
+# Количество параллельных процессов (для slave)
+slave_parallel_threads = 20
+
+# Важная строка, бывает что нужно
+# slave_skip_errors=1062 1396 1032 1677 1964
+slave_skip_errors=1396 1032
+
+#Error Log
+log_error               = /var/log/mariadb/mysql_error.log
+#Slow Query Log
+#log-slow-queries
+slow_query_log          = 1
+#slow_query_log_file     = /var/log/mariadb/mysql_slow.log
+slow_query_log_file     = /var/lib/mysql/mysql_slow_new.log
+long_query_time         = 3
+#log-queries-not-using-indexes
+
+
+external-locking=FALSE
+open_files_limit=65535
+character-set-server = utf8
+collation-server = utf8_general_ci
+
+[client]
+socket = {{ mysql_socket }}
+default-character-set = utf8
+
+[mysqld_safe]
+nice = -15
+
+[mysqldump]
+quick
+quote-names
+max_allowed_packet = 1024M
+
+[isamchk]
+#key_buffer = 384M
+#sort_buffer = 384M
+#read_buffer = 256M
+#write_buffer = 256M
+
+[myisamchk]
+key_buffer = 128M
+sort_buffer = 128M
+read_buffer = 128M
+write_buffer = 128M
+
+## Table cache settings
+table_cache = 512
+table_open_cache = 512
+# Устанавливаем папку для временных файлов в память.
+tmpdir = /var/lib/mysql/v_temp
+#tmpdir = /tmp
+
+## Thread settings
+thread_concurrency = 16
+thread_cache_size = 200
+
+## Table and TMP settings
+max_heap_table_size = 1G
+bulk_insert_buffer_size = 1G
+tmp_table_size = 1G
+
+## MyISAM Engine
+key_buffer = 128M
+myisam_sort_buffer_size = 128M
+myisam_max_sort_file_size = 128M
+myisam_repair_threads = 4
+myisam_recover = BACKUP
+
+
+#### Per connection configuration ####
+sort_buffer_size = 32M
+join_buffer_size = 32M
+thread_stack = 512K
+read_buffer_size = 32M
+read_rnd_buffer_size = 32M
+binlog_cache_size = 256K
+
+## Binlog sync settings
+XA transactions = 1
+sync_binlog = 1
+
+## InnoDB Plugin Independent Settings
+#innodb_data_home_dir = /var/lib/mysql
+#innodb_data_file_path = ibdata1:128M;ibdata2:10M:autoextend
+innodb_log_file_size = 6G
+innodb_log_files_in_group = 32G
+# Было большое значение, 12 G
+innodb_buffer_pool_size = 2G
+# Было большое значение, 4 G
+innodb_additional_mem_pool_size = 1G
+innodb_status_file
+innodb_file_per_table
+innodb_flush_log_at_trx_commit = 2
+innodb_table_locks = 0
+# Было большое значение, 2 G
+innodb_log_buffer_size = 1G
+innodb_lock_wait_timeout = 60
+# Было большое значение, 16 G
+innodb_thread_concurrency = 1G
+# Было большое значение, 16 G
+innodb_commit_concurrency = 1G
+innodb_flush_method = O_DIRECT
+O_DIRECT = local/DAS
+O_DSYNC = SAN/iSCSI
+innodb_support_xa = 0
+skip-innodb-doublewrite
+
+
+
+
+#
+# include all files from the config directory
+#
+!includedir /etc/my.cnf.d/
+#*.cnf
+

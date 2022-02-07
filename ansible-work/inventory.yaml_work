@@ -1,0 +1,30 @@
+---
+all:
+  children:
+    nginx-enter:
+      children:
+        nginx:
+          hosts:
+            52.29.9.157:
+    web-servers:
+      children:
+        web:
+          hosts:
+            35.157.253.179:
+
+#[nginx-enter]
+#dima-enter
+
+#[web-servers]
+#dima-test_web
+
+#[mongo-primary]
+#mprimary
+
+#[mongo-secondary]
+#msecondary1
+#msecondary2
+
+#[arbiter]
+#marbiter
+

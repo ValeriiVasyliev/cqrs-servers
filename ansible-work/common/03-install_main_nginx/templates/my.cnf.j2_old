@@ -1,0 +1,79 @@
+[mysqld]
+datadir=/var/lib/mysql
+socket=/var/lib/mysql/mysql.sock
+symbolic-links=0
+[mysqld_safe]
+log-error=/var/log/mariadb/mariadb.log
+pid-file=/var/run/mariadb/mariadb.pid
+[mysqld]
+bind-address = 0.0.0.0
+local-infile=0
+max_connections = 6000
+max_user_connections=1000
+key_buffer_size = 1024M
+myisam_sort_buffer_size = 256M
+read_buffer_size = 1M
+table_open_cache = 6000
+thread_cache_size = 100
+wait_timeout = 30
+connect_timeout = 30
+tmp_table_size = 2G
+max_heap_table_size = 2G
+max_allowed_packet = 1024M
+net_buffer_length = 1M
+max_connect_errors = 100
+concurrent_insert = 2
+read_rnd_buffer_size = 2M
+bulk_insert_buffer_size = 2G
+query_cache_limit = 1M
+query_cache_size = 128M
+query_cache_type = 1
+query_prealloc_size = 128M
+query_alloc_block_size = 128M
+transaction_alloc_block_size = 128M
+transaction_prealloc_size = 128M
+max_write_lock_count = 16
+log_error               = /var/log/mariadb/mysql_error.log
+external-locking=FALSE
+open_files_limit=655350
+character-set-server = utf8
+collation-server = utf8_general_ci
+lower_case_table_names = 1
+[client]
+socket = /var/lib/mysql/mysql.sock
+default-character-set = utf8
+[mysqld_safe]
+nice = -15
+[mysqldump]
+quick
+quote-names
+max_allowed_packet = 1024M
+[isamchk]
+[myisamchk]
+key_buffer = 384M
+sort_buffer = 384M
+read_buffer = 256M
+write_buffer = 256M
+table_cache = 512
+table_open_cache = 512
+tmpdir = /tmp
+thread_concurrency = 16
+thread_cache_size = 200
+max_heap_table_size = 2G
+bulk_insert_buffer_size = 2G
+tmp_table_size = 4G
+key_buffer = 1M
+myisam_sort_buffer_size = 128M
+myisam_max_sort_file_size = 256M
+myisam_repair_threads = 4
+myisam_recover = BACKUP
+sort_buffer_size = 64M
+join_buffer_size = 64M
+thread_stack = 512K
+read_buffer_size = 64M
+read_rnd_buffer_size = 32M
+binlog_cache_size = 128K
+XA transactions = 1
+sync_binlog = 1
+!includedir /etc/my.cnf.d
+

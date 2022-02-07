@@ -1,0 +1,260 @@
+---
+# tasks file for 01-first_install
+
+- name: Install Epel repo
+  yum:
+    name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+    state: present
+
+- name: Add repository for Mariadb
+  yum_repository:
+    name: mariadb
+    description: MariaDB 10.4 CentOS repository list 
+    baseurl: http://yum.mariadb.org/10.4/centos7-amd64
+    gpgkey: https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+    gpgcheck: 1
+
+- name: Upgrade all packages
+  yum:
+    name: '*'
+    state: latest
+
+- name: Install packages
+  yum:
+    name:
+      - mc
+      - htop
+      - awscli
+      - python2-boto3
+      - python2-botocore
+      - pwgen
+    state: latest
+
+- name: Install MariaDB extensions
+  yum:
+    state: latest
+    name:
+      - mariadb-server
+      - MariaDB-client
+      - MySQL-python
+      - mariadb-devel
+      - mariadb-libs
+      - python-devel
+      - python2-PyMySQL
+      - python2-pip
+
+- name: Create directory for nginx config files
+  file:
+    path: "{{ item  }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  loop:
+    - /root/scripts
+
+- name: Copy acme config for nginx
+  template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  loop:
+    - { src: templates/my.cnf.j2 , dest: '/etc/my.cnf'}
+  notify: 
+    - restart nginx
+    - restart mysql
+
+- name: Install MySQL-Python  module
+  pip:
+    name: MySQL-python
+
+- name: Start the MySQL service
+  service:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: Sets the root password
+  mysql_user:
+    name: root
+    password: "{{ mysql_root_password }}"
+    login_unix_socket: /var/lib/mysql/mysql.sock
+
+
+
+#- name: Check if a custom root password is specified
+#  debug:
+#    msg: >
+#      Warning!! the MariaDB root password was left empty. Please set a custom
+#      password with role variable mariadb_root_password to secure your database
+#      server!
+#  when: mysql_root_password | length == 0
+
+# This command will fail when the root password was set previously
+#- name: Check if root password is set
+#  shell: >
+#    mysqladmin -u root status
+#  changed_when: false
+#  failed_when: false
+#  register: root_pwd_check
+
+#- name: Set MariaDB root password for the first time (root@localhost)
+#  mysql_user:
+#    name: root
+#    password: "{{ mysql_root_password }}"
+#    host: localhost
+#    state: present
+#  when: root_pwd_check.rc == 0
+
+#- name: Set MariaDB root password for 127.0.0.1, ::1
+#  mysql_user:
+#    name: root
+#    password: "{{ mysql_root_password }}"
+#    host: "{{ item }}"
+#    login_user: root
+#    login_password: "{{ mysql_root_password }}"
+#    login_unix_socket: "{{ mariadb_socket }}"
+#    state: present
+#  with_items:
+#    - ::1
+#    - 127.0.0.1
+#  when: root_pwd_check.rc == 0
+
+
+
+#- name: generate root password
+#  command: pwgen -s 24 -N 1
+#  register: mariadb_register_root_password
+
+
+#- name: Set root user password
+#  mysql_user: 
+#    name: root
+#    host: "{{ item }}"
+#    password: "{{ mysql_root_password }}"
+#    check_implicit_admin: yes
+#    login_user: root
+#    login_password: ""
+#    state: present
+#  loop:
+#    - 127.0.0.1
+#    - ::1
+#    - localhost
+#    - "{{ ansible_hostname }}"
+
+
+#- name: Set root user password
+#  mysql_user:
+#    name: root
+#    host_all: yes
+#    password: '{{ mariadb_register_root_password.stdout }}'
+#    check_implicit_admin: yes
+#    update_password: always
+#    state: present
+
+- name: Copy .my.cnf file with root password credentials
+  become: true
+  become_user: root
+  template:
+    src: templates/.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: 0600
+
+
+
+#- name: Set root user password
+#  mysql_user:
+#    name: root
+#    host: localhost
+#    password: "{{ mysql_root_password }}"
+#    update_password: on_create
+#    state: present
+
+
+#- name: Set MariaDB root password for 127.0.0.1, ::1
+#  mysql_user:
+#    name: root
+#    password: '{{ mariadb_register_root_password.stdout }}'
+#    host: "{{ item }}"
+#    login_user: root
+#    login_password: '{{ mariadb_register_root_password.stdout }}'
+#    state: present
+#  with_items:
+#    - ::1
+#    - 127.0.0.1
+
+
+#login_unix_socket: "{{ mariadb_socket }}"
+#  with_items:
+#    - 127.0.0.1
+#    - localhost
+#    - "{{ ansible_hostname }}"
+
+
+#    check_implicit_admin: yes
+#    priv: "*.*:ALL,GRANT"
+#    state: present
+
+# Не понятно для чего используется server_hostname
+#- name: Delete anonymous MySQL server user for "{{ server_hostname }}"
+#  become: true
+#  action: mysql_user user="" host="{{ server_hostname }}" state="absent"
+
+- name: Delete anonymous MySQL server user for localhost
+  become: yes
+  mysql_user:
+    name: ''
+    host_all: yes
+    state: absent
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+
+- name: Remove the MySQL test database
+  become: yes
+  become_user: root
+  mysql_db:
+    db: test
+    state: absent
+
+# Не понятно для чего используется server_hostname
+- name: Update mysql root password for all root accounts
+  become: yes
+  mysql_user:
+    name: root
+    host_all: yes
+    password: '{{ mysql_root_password }}'
+    priv: '*.*:ALL,GRANT'
+    state: present
+
+
+- name: Create a new databases from lists
+  mysql_db:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - bb
+    - bigbang_board
+    - bigbang_finance
+    - bigbang_orders
+    - bigbang_pricecontrol
+    - bigbang
+    - bigbang_static
+    - boardrussia
+
+- name: Enable services
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - nginx
+    - php-fpm
+    - mariadb
+
+
+...

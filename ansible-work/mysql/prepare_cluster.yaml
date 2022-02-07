@@ -1,0 +1,9 @@
+---
+- name: Prepare nginx web-main servers
+  hosts: mysql
+  gather_facts: yes
+  become: yes
+  roles:
+    - common/mysql
+
+...

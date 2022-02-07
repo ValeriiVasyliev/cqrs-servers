@@ -1,0 +1,31 @@
+---
+all:
+  children:
+    nginx-enter:
+      children:
+        hosts:
+          www.jd.ru:
+          www.dr.ru:
+    web-servers:
+      children:
+        hosts:
+          djlsd.dkjfd.ru:
+          flsdkj.fdslfkj.ru:
+
+
+#[nginx-enter]
+#dima-enter
+
+#[web-servers]
+#dima-test_web
+
+#[mongo-primary]
+#mprimary
+
+#[mongo-secondary]
+#msecondary1
+#msecondary2
+
+#[arbiter]
+#marbiter
+

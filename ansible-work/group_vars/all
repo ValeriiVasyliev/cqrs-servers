@@ -1,0 +1,40 @@
+# When project locate
+project_folder: /var/www/example
+
+# Folder for scripts
+ftp_admin: /var/www/ftp-admin/data
+ftp_samurai: /var/www/samurai/data
+
+# backend server(s)
+remove_server: 18.184.13.214
+
+# Server hostname
+server_hostname: example.com
+
+# MySQL root passwd
+mysql_root_password: 123456_QQw
+
+# Databases path on the S3 bucket
+s3_database_path: start3
+
+# Mysql socker connection
+mysql_socket: /var/lib/mysql/mysql.sock
+
+# Mysql local user and password
+mysql_local_user: local_db_user
+mysql_local_user_passwd: Od02jflskfw0-3jfasl
+
+# Mysql replicaset user and password
+mysql_replica_user: replica_db_user
+mysql_replica_user_passwd: so03solijf-09djs
+mysql_replica_ip: 10.10.10.2
+#mysql_replica_user: local_db_user
+#mysql_replica_user_passwd: Od02jflskfw0-3jfasl
+
+# Test environment in config_ini
+is_test: 1
+
+# Какую ветку забирать
+git_branch: cqrs
+# Расположение ssh ключа
+ssh_key: ~/.ssh/gitlab

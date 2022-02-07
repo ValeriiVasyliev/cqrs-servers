@@ -1,0 +1,97 @@
+---
+- name: Install Nginx 
+  yum:
+    name: ['nginx', 'certbot']
+    state: latest
+
+- name: Create project data folder
+  file:
+      path: "{{ project_folder }}"
+      state: directory
+      mode: 0755
+      owner: nginx
+      group: nginx
+
+- name: Creates directory nginx cache
+  file:
+    path: "{{ item  }}"
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: 0755
+  loop:
+    - /nginx/ram
+    - /nginx/cache
+    - /var/log/nginx
+    - /var/nginx/client_body_temp
+    - /var/www/html/.well-known/acme-challenge
+
+
+- name: Create directory for nginx config files
+  file:
+    path: "{{ item  }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  loop:
+    - /etc/nginx/sites-avaible
+    - /etc/nginx/sites-enabled
+    - /root/scripts
+
+- name: Copy config for nginx
+  template:
+    src: templates/nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  notify: restart nginx
+
+- name: Copy acme config for nginx
+  template:
+    src: templates/acme.j2
+    dest: /etc/nginx/acme
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  notify: restart nginx
+
+
+- name: Copy config file for nginx
+  template:
+    src: templates/borjauto.conf.j2
+    dest: /etc/nginx/sites-avaible/borjauto.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart nginx
+
+- name: Copy config file for letsenrcypt
+  template:
+    src: templates/cli.ini.j2
+    dest: /etc/letsencrypt/cli.ini
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Enable config in Nginx
+  file:
+    src: /etc/nginx/sites-avaible/borjauto.conf
+    dest: /etc/nginx/sites-enabled/borjauto.conf
+    owner: root
+    group: root
+    state: link
+
+- name: Enable services
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - nginx
+
+
+...

@@ -1,0 +1,210 @@
+---
+# tasks file for 01-first_install
+
+- name: Install Epel repo
+  yum:
+    name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+    state: present
+
+- name: Add repository for Mariadb
+  yum_repository:
+    name: mariadb
+    description: MariaDB 10.4 CentOS repository list 
+    baseurl: http://yum.mariadb.org/10.4/centos7-amd64
+    gpgkey: https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+    gpgcheck: 1
+
+- name: Upgrade all packages
+  yum:
+    name: '*'
+    state: latest
+
+- name: Install packages
+  yum:
+    name:
+      - mc
+      - htop
+      - awscli
+      - python2-boto3
+      - python2-botocore
+    state: latest
+
+- name: Install MariaDB extensions
+  yum:
+    state: latest
+    name:
+      - mariadb-server
+      - MariaDB-client
+      - MySQL-python
+      - mariadb-devel
+      - mariadb-libs
+      - python-devel
+      - python2-PyMySQL
+      - python2-pip
+
+- name: Create directory for nginx config files
+  file:
+    path: "{{ item  }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  loop:
+    - /etc/nginx/sites-avaible
+    - /etc/nginx/sites-enabled
+    - /root/scripts
+    - /root/.aws
+
+- name: Copy acme config for nginx
+  template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  loop:
+    - { src: templates/acme.j2 , dest: '/etc/nginx/acme'}
+    - { src: templates/my.cnf.j2 , dest: '/etc/my.cnf'}
+  notify: 
+    - restart nginx
+    - restart mysql
+
+- name: Copy config file for awscli
+  template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: root
+    group: root
+    mode: 0600
+  loop:
+    - { src: templates/config.j2, dest: '/root/.aws/config'}
+    - { src: templates/credentials.j2, dest: '/root/.aws/credentials'}
+
+- name: Install MySQL-Python  module
+  pip:
+    name: MySQL-python
+  become: yes
+
+- name: Copy .my.cnf file with root password credentials
+  become: true
+  become_user: root
+  template:
+    src: templates/.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Start the MySQL service
+  service:
+    name: mariadb
+    state: started
+    enabled: true
+
+
+#- name: Set root user password
+#  become: yes
+#  become_user: root
+#  mysql_user:
+#    name: root
+#    host: "{{ item }}"
+#    check_implicit_admin: yes
+#    password: "{{ mysql_root_password }}"
+#    priv: "*.*:ALL,GRANT"
+#    state: present
+#  with_items:
+#    - 127.0.0.1
+#    - localhost
+#    - "{{ ansible_hostname }}"
+
+# Не понятно для чего используется server_hostname
+#- name: Delete anonymous MySQL server user for "{{ server_hostname }}"
+#  become: true
+#  action: mysql_user user="" host="{{ server_hostname }}" state="absent"
+
+#- name: Delete anonymous MySQL server user for localhost
+#  become: yes
+#  mysql_user:
+#    name: ''
+#    host_all: yes
+#    state: absent
+
+- name: Remove the MySQL test database
+  become: yes
+  become_user: root
+  mysql_db:
+    db: test
+    state: absent
+
+# Не понятно для чего используется server_hostname
+- name: Update mysql root password for all root accounts
+  become: yes
+  mysql_user:
+    name: root
+    host_all: yes
+    password: '{{ mysql_root_password }}'
+    priv: '*.*:ALL,GRANT'
+    state: present
+
+
+- name: Create a new databases from lists
+  mysql_db:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - bb
+    - bigbang_board
+    - bigbang_finance
+    - bigbang_orders
+    - bigbang_pricecontrol
+    - bigbang
+    - bigbang_static
+    - boardrussia
+
+##################
+- name: Simple GET operation
+  aws_s3:
+    bucket: databases.example
+    object: "{{ s3_database_path }}/{{ item }}"
+    dest: "/tmp/{{ item }}"
+    mode: get
+  loop:
+    - bb.sql.gz
+    - bigbang_board.sql.gz
+    - bigbang_finance.sql.gz
+    - bigbang_orders.sql.gz
+    - bigbang_pricecontrol.sql.gz
+    - bigbang.sql.gz
+    - bigbang_static.sql.gz
+    - boardrussia.sql.gz
+
+- name: Restore database
+  mysql_db:
+    name: "{{ item }}"
+    state: import
+    target: "/tmp/{{ item }}.sql.gz"
+  loop:
+    - bb
+    - bigbang_board
+    - bigbang_finance
+    - bigbang_orders
+    - bigbang_pricecontrol
+    - bigbang
+    - bigbang_static
+    - boardrussia
+    
+##################
+
+- name: Enable services
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - nginx
+    - php-fpm
+    - mariadb
+
+
+...

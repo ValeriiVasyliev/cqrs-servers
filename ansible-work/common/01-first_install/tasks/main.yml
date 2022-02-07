@@ -1,0 +1,86 @@
+---
+# tasks file for 01-first_install
+
+- name: Install Epel repo
+  yum:
+    name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+    state: present
+
+- name: Upgrade all packages
+  yum:
+    name: '*'
+    state: latest
+
+- name: Install packages
+  yum:
+    name:
+      - mc
+      - htop
+      - git
+      - glances
+      - lsyncd
+      - wget
+    state: latest
+
+#Copy ssh key-file
+- name: Creates .ssh directory 
+  file:
+    path: ~/.ssh
+    state: directory
+
+# This public key is set on Github repo Settings under "Deploy keys"
+- name: Copy authorized keys into new AWS server
+  authorized_key:
+    user: ec2-user
+    state: present
+    key: '{{ item }}'
+  with_file:
+    - templates/dima.key
+    - templates/sergey.key
+  when: ansible_distribution == 'Amazon'
+# ansible_distribution == ''
+
+- name: Copy authorized keys into new CENTOS server
+  authorized_key:
+    user: root
+    state: present
+    key: '{{ item }}'
+  with_file:
+    - templates/dima.key
+    - templates/sergey.key
+  when: ansible_distribution == 'CentOS'
+
+# Disable SElinux if it Centos
+#- name: Disable SElinux 
+#  selinux:
+#    state: disabled
+#  when: ansible_distribution == 'CentOS'
+
+#- name: Reboot server
+#  reboot:
+#    reboot_timeout: 3600
+#  when: ansible_distribution == 'CentOS'
+
+#  shell: sleep 3 && reboot now
+#  async: 10
+#  poll: 0
+#  when: ansible_distribution == 'CentOS'
+
+#- name: Wait till my server come up online
+#  wait_for:
+#    port: "{{ (ansible_port|default(ansible_ssh_port))|default(22) }}"
+#    host: '{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}'
+#    search_regex: OpenSSH
+#    delay: 10  # Do not check for at least 10 sec
+#    timeout: 40
+#  connection: local
+  
+#  wait_for:
+#    host: "{{ inventory_hostname }}"
+#    state:  started
+#    delay:  15
+#    timeout: 40
+ # delegate_to: localhost
+  
+
+

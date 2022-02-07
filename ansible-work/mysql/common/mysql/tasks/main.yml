@@ -1,0 +1,200 @@
+---
+
+- name: Install Epel repo
+  yum:
+    name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+    state: present
+
+- name: Add repository for Mariadb
+  yum_repository:
+    name: mariadb
+    description: MariaDB 10.4 CentOS repository list 
+    baseurl: http://yum.mariadb.org/10.4/centos7-amd64
+    gpgkey: https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+    gpgcheck: 1
+
+- name: Install MariaDB extensions
+  yum:
+    state: latest
+    name:
+      - mariadb-server
+      - MariaDB-client
+      - MySQL-python
+      - mariadb-devel
+      - mariadb-libs
+      - python-devel
+      - python2-PyMySQL
+      - python2-pip
+
+- name: Creates directory for nginx and php-fpm
+  file:
+    path: "{{ item  }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  loop:
+    - /run/php-fpm
+    - /var/log/nginx
+    - /var/nginx/client_body_temp
+    - /var/www/html/.well-known/acme-challenge
+    - /var/lib/php/session
+
+- name: Create directory for nginx config files
+  file:
+    path: "{{ item  }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  loop:
+    - /etc/nginx/sites-avaible
+    - /etc/nginx/sites-enabled
+    - /root/scripts
+    - /root/.aws
+
+- name: Copy config for nginx
+  template:
+    src: templates/nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+
+- name: Copy config for nginx, mysql, php, php-fpm, letsencript
+  template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  loop:
+    - { src: templates/acme.j2 , dest: '/etc/nginx/acme'}
+    - { src: templates/my.cnf.j2 , dest: '/etc/my.cnf'}
+    - { src: templates/php.ini.j2 , dest: '/etc/php.ini'}
+
+- name: Copy config file for nginx
+  template:
+    src: templates/borjauto.conf.j2
+    dest: /etc/nginx/sites-avaible/borjauto.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Copy config file for awscli
+  template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: root
+    group: root
+    mode: 0600
+  loop:
+    - { src: templates/config.j2, dest: '/root/.aws/config'}
+    - { src: templates/credentials.j2, dest: '/root/.aws/credentials'}
+    - { src: templates/gitkey, dest: '/root/.ssh/gitlab'}
+
+
+- name: Enable config in Nginx
+  file:
+    src: /etc/nginx/sites-avaible/borjauto.conf
+    dest: /etc/nginx/sites-enabled/borjauto.conf
+    owner: root
+    group: root
+    state: link
+
+- name: Copy config for site as config.ini
+  template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  loop:
+    - { src: templates/config.ini.j2 , dest: '/root/config.ini	'}
+
+
+- name: Install MySQL-Python  module
+  pip:
+    name: MySQL-python
+  become: yes
+
+- name: Start the MySQL service
+  service:
+    name: mariadb
+    state: started
+    enabled: true
+  become: yes
+
+- name: Sets the root password
+  mysql_user:
+    name: root
+    password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
+
+- name: Copy .my.cnf file with root password credentials
+  become: true
+  become_user: root
+  template:
+    src: templates/.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Remove the MySQL test database
+  become: yes
+  mysql_db:
+    db: test
+    state: absent
+
+
+- name: Delete anonymous MySQL server user for localhost
+  become: yes
+  mysql_user:
+    name: ''
+    host_all: yes
+    state: absent
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+
+- name: Create a new databases from lists
+  mysql_db:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - bb
+    - bigbang_board
+    - bigbang_finance
+    - bigbang_orders
+    - bigbang_pricecontrol
+    - bigbang_static
+    - boardrussia
+    - bigbang
+
+- name: Add user for use databases
+  mysql_user:
+    name: "{{ mysql_local_user }}"
+    password: "{{ mysql_local_user_passwd }}"
+    priv: '*.*:ALL,GRANT'
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
+
+- name: Add user for Replicaset
+  mysql_user:
+    name: "{{ mysql_replica_user }}"
+    password: "{{ mysql_replica_user_passwd }}"
+    priv: "*.*:REPLICATION CLIENT"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
+
+
+
+
+...

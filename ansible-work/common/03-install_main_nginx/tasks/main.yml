@@ -1,0 +1,380 @@
+---
+- name: Install remirepo from RPM Centos
+  yum:
+    name: "http://rpms.remirepo.net/enterprise/remi-release-7.rpm"
+    state: present
+
+- name: Add repository for Mariadb
+  yum_repository:
+    name: mariadb
+    description: MariaDB 10.4 CentOS repository list 
+    baseurl: http://yum.mariadb.org/10.4/centos7-amd64
+    gpgkey: https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+    gpgcheck: 1
+
+- name: Install Nginx 
+  yum:
+    name: ['nginx', 'certbot']
+    state: latest
+
+- name: Preinstall need packages for php extensions
+  yum:
+    state: latest
+    name: 
+     - sshfs
+     - httpd
+     - awscli
+     - python2-boto3
+     - python2-botocore
+  when: ansible_distribution == 'Amazon'
+
+- name: Preinstall need packages for php extensions
+  yum:
+    state: latest
+    name: 
+     - sshfs
+     - httpd
+     - awscli
+     - python-boto3
+     - python2-botocore
+  when: ansible_distribution == 'CentOS'
+
+- name: Preinstall need packages for php extensions Amazon
+  yum:
+    state: latest
+    name:
+     - ncurses-compat-libs
+  when: ansible_distribution == 'Amazon'
+
+- name: Install php extensions
+  yum:
+    state: latest
+    name: 
+      - php
+      - php-common
+      - php-mysqlnd
+      - php-pecl-memcached
+      - php-cli
+      - php-fpm
+      - php-json
+      - php-mbstring
+      - php-opcache
+      - php-xml
+      - php-bcmath
+      - php-mcrypt
+      - php-amqplib
+      - php-pecl-memcache
+      - php-gd
+      - php-pecl-zip
+      - php-phpoffice-phpexcel
+    enablerepo: "remi-php74,epel,remi"
+    disablerepo: "amzn2-core,remi-safe"
+  when: ansible_distribution == 'Amazon'
+
+- name: Install php extensions
+  yum:
+    state: latest
+    name:
+      - php
+      - php-common
+      - php-mysqlnd
+      - php-pecl-memcached
+      - php-cli
+      - php-fpm
+      - php-json
+      - php-mbstring
+      - php-opcache
+      - php-xml
+      - php-bcmath
+      - php-mcrypt
+      - php-amqplib
+      - php-pecl-memcache
+      - php-gd
+      - php-pecl-zip
+      - php-phpoffice-phpexcel
+    enablerepo: "remi-php73,epel,remi"
+    disablerepo: "remi-safe"
+  when: ansible_distribution == 'CentOS'
+
+- name: Install MariaDB extensions
+  yum:
+    state: latest
+    name:
+      - mariadb-server
+      - MariaDB-client
+      - MySQL-python
+      - mariadb-devel
+      - mariadb-libs
+      - python-devel
+      - python2-PyMySQL
+      - python2-pip
+
+- name: Create project data folder
+  file:
+      path: "{{ item }}"
+      state: directory
+      mode: 0755
+      owner: nginx
+      group: nginx
+  loop:
+    - "{{ project_folder }}/web"
+    - "{{ ftp_admin }}/ftp-users/archive"
+    - "{{ ftp_admin }}/ftp-pricelists/archive/"
+    - "{{ ftp_samurai }}/www/price/full"
+    - "{{ ftp_samurai }}/scripts"
+
+- name: Creates directory for nginx and php-fpm
+  file:
+    path: "{{ item  }}"
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: 0755
+  loop:
+    - /run/php-fpm
+    - /var/log/nginx
+    - /var/nginx/client_body_temp
+    - /var/www/html/.well-known/acme-challenge
+    - /var/lib/php/session
+
+- name: Create directory for nginx config files
+  file:
+    path: "{{ item  }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  loop:
+    - /etc/nginx/sites-avaible
+    - /etc/nginx/sites-enabled
+    - /root/scripts
+    - /root/.aws
+
+- name: Copy config for nginx
+  template:
+    src: templates/nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  notify: restart nginx
+
+- name: Copy config for nginx, mysql, php, php-fpm, letsencript
+  template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  loop:
+    - { src: templates/acme.j2 , dest: '/etc/nginx/acme'}
+    - { src: templates/my.cnf.j2 , dest: '/etc/my.cnf'}
+    - { src: templates/php.ini.j2 , dest: '/etc/php.ini'}
+    - { src: templates/cli.ini.j2 , dest: '/etc/letsencrypt/cli.ini'}
+    - { src: templates/www.conf.j2 , dest: '/etc/php-fpm.d/www.conf'}
+  notify: 
+    - restart nginx
+    - restart mysql
+    - restart php-fpm
+
+- name: Copy config file for nginx
+  template:
+    src: templates/example.conf.j2
+    dest: /etc/nginx/sites-avaible/example.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart nginx
+
+- name: Copy config file for awscli
+  template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: root
+    group: root
+    mode: 0600
+  loop:
+    - { src: templates/config.j2, dest: '/root/.aws/config'}
+    - { src: templates/credentials.j2, dest: '/root/.aws/credentials'}
+    - { src: templates/gitkey, dest: '/root/.ssh/gitlab'}
+
+
+- name: Enable config in Nginx
+  file:
+    src: /etc/nginx/sites-avaible/example.conf
+    dest: /etc/nginx/sites-enabled/example.conf
+    owner: root
+    group: root
+    state: link
+
+- name: Copy config for site as config.ini
+  template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: nginx
+    group: nginx
+    mode: 0644
+    backup: yes
+  loop:
+    - { src: templates/config.ini.j2 , dest: '{{ project_folder }}/config.ini'}
+
+- name: Create directory for MySQL 
+  file:
+    path: "{{ item  }}"
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: 0755
+  loop:
+    - /var/log/mariadb/
+
+- name: Install MySQL-Python  module
+  pip:
+    name: MySQL-python
+  become: yes
+
+- name: Start the MySQL service
+  service:
+    name: mariadb
+    state: started
+    enabled: true
+  become: yes
+
+- name: Sets the root password
+  mysql_user:
+    name: root
+    password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
+
+- name: Copy .my.cnf file with root password credentials
+  become: true
+  become_user: root
+  template:
+    src: templates/.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Remove the MySQL test database
+  become: yes
+  mysql_db:
+    db: test
+    state: absent
+
+
+- name: Delete anonymous MySQL server user for localhost
+  become: yes
+  mysql_user:
+    name: ''
+    host_all: yes
+    state: absent
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+
+- name: Create a new databases from lists
+  mysql_db:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - bb
+    - bigbang_board
+    - bigbang_finance
+    - bigbang_orders
+    - bigbang_pricecontrol
+    - bigbang_static
+    - boardrussia
+    - bigbang
+
+- name: Simple GET operation
+  aws_s3:
+    bucket: databases.example
+    object: "{{ s3_database_path }}/{{ item }}"
+    dest: "/tmp/{{ item }}"
+    mode: get
+  loop:
+    - bb.sql.gz
+    - bigbang_board.sql.gz
+    - bigbang_finance.sql.gz
+    - bigbang_orders.sql.gz
+    - bigbang_pricecontrol.sql.gz
+    - bigbang.sql.gz
+    - bigbang_static.sql.gz
+    - boardrussia.sql.gz
+
+- name: Restore database
+  mysql_db:
+    name: "{{ item }}"
+    state: import
+    target: "/tmp/{{ item }}.sql.gz"
+    connect_timeout: 2400
+  loop:
+    - bb
+    - bigbang_board
+    - bigbang_finance
+    - bigbang_orders
+    - bigbang_pricecontrol
+    - bigbang_static
+    - boardrussia
+    - bigbang
+
+- name: Add user for use databases
+  mysql_user:
+    name: "{{ mysql_local_user }}"
+    password: "{{ mysql_local_user_passwd }}"
+    priv: '*.*:ALL,GRANT'
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
+
+
+- name: Add user for Replicaset
+  mysql_user:
+    name: "{{ mysql_replica_user }}"
+    password: "{{ mysql_replica_user_passwd }}"
+    priv: "*.*:REPLICATION CLIENT"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    login_unix_socket: "{{ mysql_socket }}"
+
+- name: Clone repository
+  git:
+    repo: git@gitlab.com:burj-auto/auto.git
+    dest: "{{ project_folder}}/web"
+    version: "{{ git_branch }}"
+    key_file: "{{ ssh_key }}"
+    accept_hostkey: yes
+    force: yes
+
+- name: Set permission to deploy folder
+  file:
+    path: "{{ project_folder}}"
+    state: directory
+    owner: nginx
+    group: nginx
+    recurse: yes
+
+- name: Ensure directories are 0775
+  command: find "{{ project_folder}}/web"/ -type d -exec chmod 0775 {} \;
+  become: yes
+
+- name: Ensure files are 0664
+  command: find "{{ project_folder}}/web"/ -type f -exec chmod 0664 {} \;
+
+
+- name: Enable services
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - nginx
+    - php-fpm
+    - mariadb
+
+
+...

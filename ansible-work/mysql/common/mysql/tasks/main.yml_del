@@ -1,0 +1,101 @@
+---
+# tasks file for 01-first_install
+
+- name: Set root user password
+  mysql_user:
+    name: root
+    host_all: yes
+    password: "{{ mysql_root_password }}"
+    check_implicit_admin: yes
+    update_password: always
+    state: present
+
+#  loop:
+#    - localhost
+#    - ::1
+#    - 127.0.0.1
+
+# "{{ item }}"
+#    update_password: always
+#    state: present
+
+
+- name: Set MariaDB root password for 127.0.0.1, ::1
+  mysql_user:
+    name: root
+    password: "{{ mysql_root_password }}"
+    host: "{{ item }}"
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    state: present
+  with_items:
+    - ::1
+    - 127.0.0.1
+
+#login_unix_socket: "{{ mariadb_socket }}"
+#  with_items:
+#    - 127.0.0.1
+#    - localhost
+#    - "{{ ansible_hostname }}"
+
+
+#    check_implicit_admin: yes
+#    priv: "*.*:ALL,GRANT"
+#    state: present
+
+# Не понятно для чего используется server_hostname
+#- name: Delete anonymous MySQL server user for "{{ server_hostname }}"
+#  become: true
+#  action: mysql_user user="" host="{{ server_hostname }}" state="absent"
+
+- name: Delete anonymous MySQL server user for localhost
+  become: yes
+  mysql_user:
+    name: ''
+    host_all: yes
+    state: absent
+
+- name: Remove the MySQL test database
+  become: yes
+  become_user: root
+  mysql_db:
+    db: test
+    state: absent
+
+# Не понятно для чего используется server_hostname
+- name: Update mysql root password for all root accounts
+  become: yes
+  mysql_user:
+    name: root
+    host_all: yes
+    password: '{{ mysql_root_password }}'
+    priv: '*.*:ALL,GRANT'
+    state: present
+
+
+- name: Create a new databases from lists
+  mysql_db:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - bb
+    - bigbang_board
+    - bigbang_finance
+    - bigbang_orders
+    - bigbang_pricecontrol
+    - bigbang
+    - bigbang_static
+    - boardrussia
+
+- name: Enable services
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - nginx
+    - php-fpm
+    - mariadb
+
+
+...
